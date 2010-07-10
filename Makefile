@@ -8,11 +8,9 @@ TARG=goary
 GOFMT=gofmt -spaces=true -tabindent=false -tabwidth=4
 
 GOFILES=\
-	roarlist.go\
-	roar.go\
 	goary.go\
 
-include $(GOROOT)/src/Make.pkg
+include $(GOROOT)/src/Make.cmd
 
 format:
 	for src in ${GOFILES}; do \
