@@ -12,7 +12,7 @@ GOFILES=\
 
 include $(GOROOT)/src/Make.cmd
 
-format:
+fmt:
 	for src in ${GOFILES}; do \
 		${GOFMT} -w $$src; \
 	done
