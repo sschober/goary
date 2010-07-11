@@ -187,65 +187,16 @@ func deleteRoar(ctx *web.Context, val string) {
     ctx.WriteString(fmt.Sprintf("Deleted %d", i))
 }
 
-// TODO:
-//  This whole (web.go)-client side dispatching is insane: It ought
-//  to be done in web.go itself. Maybe via an addition to the api:
-//  add the ability to specify a content type to a handler.
-
-//
-func getRoarDispatcher(ctx *web.Context, val string) {
-    ct, _ := ctx.Request.Headers["Content-Type"]
-    switch strings.Split(ct, ";", 2)[0] {
-    case "":
-        log.Stdoutf("No Content-Type requested. Defaulting to text/plain")
-        getRoarAsString(ctx, val)
-    case "text/plain":
-        getRoarAsString(ctx, val)
-    case "application/json":
-        getRoarAsJson(ctx, val)
-    default:
-        ctx.StartResponse(400)
-        ctx.WriteString(fmt.Sprintf("Unknown Content-Type: %s\n", ct))
-    }
-}
-//
-func getRoarsDispatcher(ctx *web.Context) {
-    ct, _ := ctx.Request.Headers["Content-Type"]
-    switch strings.Split(ct, ";", 2)[0] {
-    case "":
-        log.Stdoutf("No Content-Type requested. Defaulting to text/plain")
-        ctx.WriteString(getRoarsAsString())
-    case "text/plain":
-        ctx.WriteString(getRoarsAsString())
-    case "application/json":
-        ctx.WriteString(getRoarsAsJson())
-    default:
-        ctx.StartResponse(400)
-        ctx.WriteString(fmt.Sprintf("Unknown Content-Type: %s\n", ct))
-    }
-}
-//
-func postDispatcher(ctx *web.Context) {
-    ct, _ := ctx.Request.Headers["Content-Type"]
-    switch strings.Split(ct, ";", 2)[0] {
-    case "text/plain", "application/x-www-form-urlencoded", "":
-        // not yet handled
-    case "application/json":
-        postRoarAsJson(ctx)
-    default:
-        ctx.StartResponse(400)
-        ctx.WriteString(fmt.Sprintf("Unknown Content-Type: %s\n", ct))
-    }
-}
-
 func main() {
     // initialize our roarList with some Roars
     for i := 0; i < 3; i++ {
         roarList.Push(NewRoar("Sven", fmt.Sprintf("Hello %d!", i)))
     }
     // register the dispatchers with web.go
-    web.Get("/roars", getRoarsDispatcher)
-    web.Post("/roars", postDispatcher)
-    web.Get("/roars/(.*)", getRoarDispatcher)
+    web.Get("/roars", getRoarsAsString)
+    web.GetAs("/roars", "application/json", getRoarsAsJson)
+    web.PostAs("/roars", "application/json", postRoarAsJson)
+    web.Get("/roars/(.*)", getRoarAsString)
+    web.GetAs("/roars/(.*)", "application/json", getRoarAsJson)
     web.Run("0.0.0.0:9999")
 }
