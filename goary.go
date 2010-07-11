@@ -10,6 +10,8 @@ import (
     "json"
     "time"
     "io/ioutil"
+    "container/vector"
+    "log"
 )
 
 // Type to represent a roar.
@@ -44,19 +46,15 @@ func (r Roar) toJson() string {
 }
 
 // Type to represent a list of Roars
-//
-// Note:
-//  It might be convenient to chose a Vector here, but, alas, Go
-//  does not support generics/templates. So there is only IntVector
-//  and StringVector.
-// TODO:
-//  - Investigate alternatives
-type RoarList []*Roar
+type RoarList struct {
+    // anonymous embedding is like inheriting
+    vector.Vector
+}
 
 // Custom string representation of a RoarList
 func (rl RoarList) String() string {
     var result string
-    for i, r := range roarList {
+    for i, r := range roarList.Data() {
         result += fmt.Sprintf("[%d]: %v\n", i, r)
     }
     return result
@@ -70,8 +68,8 @@ func (rl RoarList) toJson() string {
 }
 
 // (Global) RoarList instance to track Roars
-
 var roarList RoarList
+
 /*
 
 interface ContentHandler{
@@ -96,19 +94,19 @@ func getRoarsAsJson() string {
 // Return a specific Roar as JSON represenation
 // Param val needs to be Atoi parsable and point to a valid index.
 func getRoarAsJson(ctx *web.Context, val string) {
+    log.Stderrf("Request.Headers:\n%v\n", ctx.Request.Headers)
     var i, err = strconv.Atoi(val)
     if err != nil {
         ctx.StartResponse(400)
         ctx.WriteString(err.String())
         return
     }
-    if i >= len(roarList) {
+    if i >= roarList.Len() {
         ctx.StartResponse(400)
         ctx.WriteString(fmt.Sprintf("No roar with id: %d", i))
         return
     }
-    fmt.Printf("%v", ctx.Request.Headers)
-    ctx.WriteString(roarList[i].toJson())
+    ctx.WriteString(roarList.At(i).(Roar).toJson())
 }
 
 // Create a new Roar from user input.
@@ -122,7 +120,7 @@ func getRoarAsJson(ctx *web.Context, val string) {
 // http://localhost:9999/roars
 //
 func postRoarAsJson(ctx *web.Context) {
-    fmt.Printf("\n%v\n", ctx.Request)
+    log.Stderrf("Request:\n%v\n", ctx.Request)
 
     // read request body to buf
     var buf, err = ioutil.ReadAll(ctx.Request.Body)
@@ -135,8 +133,8 @@ func postRoarAsJson(ctx *web.Context) {
         ctx.WriteString("Empty request body.\n")
         return
     }
-    fmt.Printf("Read %d bytes", len(buf))
-    fmt.Printf("\n%s\n", string(buf))
+    log.Stderrf("Read %d bytes from Request.Body:", len(buf))
+    log.Stderrf("\n%s\n", string(buf))
 
     // try unmarshal bytes and extract a Roar
     var r *Roar = &Roar{}
@@ -147,19 +145,15 @@ func postRoarAsJson(ctx *web.Context) {
             err.String()))
         return
     }
-    fmt.Printf("New Roar: %v", r)
 
     // append new roar
-    // yay, this is efficient, baby *g*
-    var roarListNew = make(RoarList, len(roarList)+1)
-    for i, r := range roarList {
-        roarListNew[i] = r
-    }
-    roarListNew[len(roarListNew)-1] = r
-    roarList = roarListNew
+    roarList.Push(r)
+    log.Stdoutf("Created new Roar with id %d:\n%v\n",
+        r, roarList.Len())
 
     //tell client id of new roar
-    ctx.WriteString(fmt.Sprintf("Created new Roar with id: %d\n", len(roarListNew)-1))
+    ctx.WriteString(fmt.Sprintf("Created new Roar with id: %d\n",
+        roarList.Len()))
 }
 
 func getRoarAsString(ctx *web.Context, val string) {
@@ -169,13 +163,28 @@ func getRoarAsString(ctx *web.Context, val string) {
         ctx.WriteString(err.String())
         return
     }
-    if i >= len(roarList) {
+    if i >= roarList.Len() {
         ctx.StartResponse(400)
         ctx.WriteString(fmt.Sprintf("No roar with id: %d", i))
         return
     }
-    fmt.Printf("%v", ctx.Request.Headers)
-    ctx.WriteString(roarList[i].String())
+    ctx.WriteString(roarList.At(i).(Roar).String())
+}
+
+func deleteRoar(ctx *web.Context, val string) {
+    var i, err = strconv.Atoi(val)
+    if err != nil {
+        ctx.StartResponse(400)
+        ctx.WriteString(err.String())
+        return
+    }
+    if i >= roarList.Len() {
+        ctx.StartResponse(400)
+        ctx.WriteString(fmt.Sprintf("No roar with id: %d", i))
+        return
+    }
+    roarList.Delete(i)
+    ctx.WriteString(fmt.Sprintf("Deleted %d", i))
 }
 
 // TODO:
@@ -187,8 +196,11 @@ func getRoarAsString(ctx *web.Context, val string) {
 func getRoarDispatcher(ctx *web.Context, val string) {
     ct, _ := ctx.Request.Headers["Content-Type"]
     switch strings.Split(ct, ";", 2)[0] {
-    case "text/plain", "":
-	getRoarAsString(ctx, val);
+    case "":
+        log.Stdoutf("No Content-Type requested. Defaulting to text/plain")
+        getRoarAsString(ctx, val)
+    case "text/plain":
+        getRoarAsString(ctx, val)
     case "application/json":
         getRoarAsJson(ctx, val)
     default:
@@ -200,8 +212,11 @@ func getRoarDispatcher(ctx *web.Context, val string) {
 func getRoarsDispatcher(ctx *web.Context) {
     ct, _ := ctx.Request.Headers["Content-Type"]
     switch strings.Split(ct, ";", 2)[0] {
-    case "text/plain", "":
-	ctx.WriteString(getRoarsAsString())
+    case "":
+        log.Stdoutf("No Content-Type requested. Defaulting to text/plain")
+        ctx.WriteString(getRoarsAsString())
+    case "text/plain":
+        ctx.WriteString(getRoarsAsString())
     case "application/json":
         ctx.WriteString(getRoarsAsJson())
     default:
@@ -224,13 +239,11 @@ func postDispatcher(ctx *web.Context) {
 }
 
 func main() {
-    roarList = make(RoarList, 3)
+    // initialize our roarList with some Roars
     for i := 0; i < 3; i++ {
-        roarList[i] = NewRoar("Sven", fmt.Sprintf("Hello %d!", i))
+        roarList.Push(NewRoar("Sven", fmt.Sprintf("Hello %d!", i)))
     }
-    /*
-    var getRoarsDispatcher = ContentDispatcher
-*/
+    // register the dispatchers with web.go
     web.Get("/roars", getRoarsDispatcher)
     web.Post("/roars", postDispatcher)
     web.Get("/roars/(.*)", getRoarDispatcher)
