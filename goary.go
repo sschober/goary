@@ -106,7 +106,7 @@ func getRoarAsJson(ctx *web.Context, val string) {
         ctx.WriteString(fmt.Sprintf("No roar with id: %d", i))
         return
     }
-    ctx.WriteString(roarList.At(i).(Roar).toJson())
+    ctx.WriteString(roarList.At(i).(*Roar).toJson())
 }
 
 // Create a new Roar from user input.
@@ -168,7 +168,7 @@ func getRoarAsString(ctx *web.Context, val string) {
         ctx.WriteString(fmt.Sprintf("No roar with id: %d", i))
         return
     }
-    ctx.WriteString(roarList.At(i).(Roar).String())
+    ctx.WriteString(roarList.At(i).(*Roar).String())
 }
 
 func deleteRoar(ctx *web.Context, val string) {
