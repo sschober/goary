@@ -9,7 +9,7 @@
 
 ## Requirements
 
-- import "github.com/sschober/web.go"
+    import "github.com/sschober/web.go"
 
 ## Features
 
