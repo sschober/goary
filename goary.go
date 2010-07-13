@@ -1,12 +1,11 @@
 package main
 
 import (
-    //    "github.com/hoisie/web.go"
-    //    "github.com/sschober/web.go"
-    "web"
+    //"github.com/hoisie/web.go"
+    "github.com/sschober/web.go"
     "fmt"
     "strconv"
-    "strings"
+    //"strings"
     "json"
     "time"
     "io/ioutil"
@@ -198,5 +197,6 @@ func main() {
     web.PostAs("/roars", "application/json", postRoarAsJson)
     web.Get("/roars/(.*)", getRoarAsString)
     web.GetAs("/roars/(.*)", "application/json", getRoarAsJson)
+    web.Delete("/roars/(.*)", deleteRoar)
     web.Run("0.0.0.0:9999")
 }
